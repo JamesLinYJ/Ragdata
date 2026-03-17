@@ -168,8 +168,20 @@ install_docker_if_needed() {
     die "Docker or Docker Compose plugin is missing"
   fi
 
-  log "Installing Docker using the official convenience script"
-  curl -fsSL https://get.docker.com | run_as_root sh
+  case "${PKG_MANAGER}" in
+    dnf|yum)
+      log "Installing Docker CE from the official yum repository"
+      run_as_root "${PKG_MANAGER}" install -y dnf-plugins-core yum-utils device-mapper-persistent-data lvm2 curl ca-certificates || true
+      run_as_root mkdir -p /etc/yum.repos.d
+      run_as_root curl -fsSL https://download.docker.com/linux/centos/docker-ce.repo -o /etc/yum.repos.d/docker-ce.repo
+      run_as_root "${PKG_MANAGER}" makecache
+      run_as_root "${PKG_MANAGER}" install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      ;;
+    *)
+      log "Installing Docker using the official convenience script"
+      curl -fsSL https://get.docker.com | run_as_root sh
+      ;;
+  esac
 }
 
 ensure_docker_running() {
