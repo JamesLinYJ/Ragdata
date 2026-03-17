@@ -1,0 +1,7 @@
+.deploy/
+.playwright-cli/
+output/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
