@@ -17,6 +17,7 @@ RAGFLOW_VERSION="${RAGFLOW_VERSION:-v0.24.0}"
 RAGFLOW_REPO="${RAGFLOW_REPO:-https://github.com/infiniflow/ragflow.git}"
 RAGFLOW_IMAGE="${RAGFLOW_IMAGE:-infiniflow/ragflow:${RAGFLOW_VERSION}}"
 DOCKER_CE_REPO_URL="${DOCKER_CE_REPO_URL:-https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo}"
+DOCKER_REGISTRY_MIRRORS="${DOCKER_REGISTRY_MIRRORS:-https://docker.m.daocloud.io,https://docker.1ms.run}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-know-ragflow}"
 RAGFLOW_DEVICE="${RAGFLOW_DEVICE:-cpu}"
 RAGFLOW_DOC_ENGINE="${RAGFLOW_DOC_ENGINE:-elasticsearch}"
@@ -189,6 +190,7 @@ install_docker_if_needed() {
 
 ensure_docker_running() {
   install_docker_if_needed
+  configure_docker_registry_mirrors
 
   if docker info >/dev/null 2>&1; then
     return
@@ -201,6 +203,48 @@ ensure_docker_running() {
 
   sleep 3
   docker info >/dev/null 2>&1 || die "Docker daemon is unavailable"
+}
+
+configure_docker_registry_mirrors() {
+  local daemon_dir="/etc/docker"
+  local daemon_file="${daemon_dir}/daemon.json"
+
+  mkdir -p "${WORK_ROOT}"
+
+  if ! command_exists python3; then
+    warn "python3 is unavailable; skipping Docker registry mirror configuration"
+    return
+  fi
+
+  run_as_root mkdir -p "${daemon_dir}"
+  printf '%s\n' "${DOCKER_REGISTRY_MIRRORS}" | tr ',' '\n' > "${WORK_ROOT}/docker-mirrors.txt"
+  run_as_root env \
+    DAEMON_FILE="${daemon_file}" \
+    MIRROR_FILE="${PWD}/${WORK_ROOT#./}/docker-mirrors.txt" \
+    python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+daemon_file = Path(os.environ["DAEMON_FILE"])
+mirror_file = Path(os.environ["MIRROR_FILE"])
+mirrors = [line.strip() for line in mirror_file.read_text().splitlines() if line.strip()]
+
+data = {}
+if daemon_file.exists():
+    try:
+        data = json.loads(daemon_file.read_text())
+    except Exception:
+        data = {}
+
+data["registry-mirrors"] = mirrors
+daemon_file.write_text(json.dumps(data, indent=2, ensure_ascii=True) + "\n")
+PY
+
+  if command_exists systemctl; then
+    run_as_root systemctl daemon-reload || true
+    run_as_root systemctl restart docker || true
+  fi
 }
 
 install_node_if_needed() {
