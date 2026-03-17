@@ -174,7 +174,9 @@ install_docker_if_needed() {
       log "Installing Docker CE from the official yum repository"
       run_as_root "${PKG_MANAGER}" install -y dnf-plugins-core yum-utils device-mapper-persistent-data lvm2 curl ca-certificates || true
       run_as_root mkdir -p /etc/yum.repos.d
-      run_as_root curl -fsSL "${DOCKER_CE_REPO_URL}" -o /etc/yum.repos.d/docker-ce.repo
+      run_as_root curl -fsSL "${DOCKER_CE_REPO_URL}" -o /tmp/docker-ce.repo
+      run_as_root mv /tmp/docker-ce.repo /etc/yum.repos.d/docker-ce.repo
+      run_as_root sed -i 's#https://download.docker.com/linux/centos#https://mirrors.aliyun.com/docker-ce/linux/centos#g' /etc/yum.repos.d/docker-ce.repo
       run_as_root "${PKG_MANAGER}" makecache
       run_as_root "${PKG_MANAGER}" install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
       ;;
