@@ -208,9 +208,23 @@ ensure_docker_running() {
 configure_docker_registry_mirrors() {
   local daemon_dir="/etc/docker"
   local daemon_file="${daemon_dir}/daemon.json"
-  local mirror_json
+  local mirror_json='['
+  local item
+  local first='1'
 
-  mirror_json="$(printf '%s\n' "${DOCKER_REGISTRY_MIRRORS}" | awk 'BEGIN { printf("[") } NF { gsub(/^[ \t]+|[ \t]+$/, "", $0); if ($0 != "") { if (count++ > 0) printf(","); printf("\"%s\"", $0) } } END { printf("]") }' RS=',' )"
+  IFS=',' read -r -a docker_mirror_items <<< "${DOCKER_REGISTRY_MIRRORS}"
+  for item in "${docker_mirror_items[@]}"; do
+    item="${item#"${item%%[![:space:]]*}"}"
+    item="${item%"${item##*[![:space:]]}"}"
+    [[ -n "${item}" ]] || continue
+    if [[ "${first}" == '1' ]]; then
+      first='0'
+    else
+      mirror_json+=','
+    fi
+    mirror_json+="\"${item}\""
+  done
+  mirror_json+=']'
 
   run_as_root mkdir -p "${daemon_dir}"
   printf '{\n  "registry-mirrors": %s\n}\n' "${mirror_json}" | run_as_root tee "${daemon_file}" >/dev/null
