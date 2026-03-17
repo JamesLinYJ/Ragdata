@@ -31,6 +31,7 @@ RAGFLOW_AUTO_USER_EMAIL="${RAGFLOW_AUTO_USER_EMAIL:-}"
 RAGFLOW_AUTO_USER_PASSWORD="${RAGFLOW_AUTO_USER_PASSWORD:-}"
 RAGFLOW_AUTO_USER_NICKNAME="${RAGFLOW_AUTO_USER_NICKNAME:-Know Admin}"
 TEI_MODEL="${TEI_MODEL:-}"
+COMPOSE_MEM_LIMIT="${COMPOSE_MEM_LIMIT:-}"
 HOST_WEB_PORT="${HOST_WEB_PORT:-80}"
 HOST_HTTPS_PORT="${HOST_HTTPS_PORT:-443}"
 HOST_API_PORT="${HOST_API_PORT:-9380}"
@@ -386,6 +387,9 @@ prepare_docker_env() {
   replace_env_var "${env_file}" COMPOSE_PROFILES "${RAGFLOW_DOC_ENGINE},${RAGFLOW_DEVICE}"
   replace_env_var "${env_file}" TZ "${TIME_ZONE}"
   replace_env_var "${env_file}" RAGFLOW_IMAGE "${RAGFLOW_IMAGE}"
+  if [[ -n "${COMPOSE_MEM_LIMIT}" ]]; then
+    replace_env_var "${env_file}" MEM_LIMIT "${COMPOSE_MEM_LIMIT}"
+  fi
   replace_env_var "${env_file}" ES_PORT "${HOST_ES_PORT}"
   replace_env_var "${env_file}" EXPOSE_MYSQL_PORT "${HOST_MYSQL_PORT}"
   replace_env_var "${env_file}" REDIS_PORT "${HOST_REDIS_PORT}"
