@@ -16,6 +16,10 @@ MANIFEST_PATH="${MANIFEST_PATH:-${WORK_ROOT}/install.manifest}"
 RAGFLOW_VERSION="${RAGFLOW_VERSION:-v0.24.0}"
 RAGFLOW_REPO="${RAGFLOW_REPO:-https://github.com/infiniflow/ragflow.git}"
 RAGFLOW_IMAGE="${RAGFLOW_IMAGE:-infiniflow/ragflow:${RAGFLOW_VERSION}}"
+MYSQL_IMAGE="${MYSQL_IMAGE:-mysql:8.0.39}"
+REDIS_IMAGE="${REDIS_IMAGE:-valkey/valkey:8}"
+INFINITY_IMAGE="${INFINITY_IMAGE:-infiniflow/infinity:v0.7.0-dev2}"
+MINIO_IMAGE="${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z}"
 DOCKER_CE_REPO_URL="${DOCKER_CE_REPO_URL:-https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo}"
 DOCKER_REGISTRY_MIRRORS="${DOCKER_REGISTRY_MIRRORS:-https://docker.m.daocloud.io,https://docker.1ms.run}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-know-ragflow}"
@@ -54,6 +58,11 @@ Environment overrides:
   COMPOSE_PROJECT_NAME=know-ragflow
   WORK_ROOT=./.deploy/know-ragflow
   FRONTEND_ACTION=dev|build|skip
+  RAGFLOW_IMAGE=infiniflow/ragflow:v0.24.0
+  MYSQL_IMAGE=mysql:8.0.39
+  REDIS_IMAGE=valkey/valkey:8
+  INFINITY_IMAGE=infiniflow/infinity:v0.7.0-dev2
+  MINIO_IMAGE=quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z
   REUSE_EXISTING_RAGFLOW=1
   AUTO_REGISTER_USER=1
   RAGFLOW_AUTO_USER_EMAIL=admin@example.com
@@ -312,6 +321,29 @@ prepare_runtime_files() {
   rm -rf "${DOCKER_DIR}"
   mkdir -p "${RUNTIME_DIR}"
   cp -a "${UPSTREAM_DIR}/docker" "${DOCKER_DIR}"
+}
+
+escape_sed_replacement() {
+  printf '%s' "$1" | sed 's/[&|]/\\&/g'
+}
+
+rewrite_runtime_image_refs() {
+  local compose_file="${DOCKER_DIR}/docker-compose-base.yml"
+  local infinity_image mysql_image minio_image redis_image
+
+  [[ -f "${compose_file}" ]] || return
+
+  infinity_image="$(escape_sed_replacement "${INFINITY_IMAGE}")"
+  mysql_image="$(escape_sed_replacement "${MYSQL_IMAGE}")"
+  minio_image="$(escape_sed_replacement "${MINIO_IMAGE}")"
+  redis_image="$(escape_sed_replacement "${REDIS_IMAGE}")"
+
+  sed -i \
+    -e "s|image: infiniflow/infinity:v0.7.0-dev2|image: ${infinity_image}|" \
+    -e "s|image: mysql:8.0.39|image: ${mysql_image}|" \
+    -e "s|image: quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z|image: ${minio_image}|" \
+    -e "s|image: valkey/valkey:8|image: ${redis_image}|" \
+    "${compose_file}"
 }
 
 port_in_use() {
@@ -686,6 +718,7 @@ main() {
   choose_ports
   clone_or_update_ragflow
   prepare_runtime_files
+  rewrite_runtime_image_refs
   if [[ "${REUSED_EXISTING_STACK}" != "1" ]]; then
     prepare_docker_env
     start_ragflow_stack
