@@ -16,6 +16,7 @@ MANIFEST_PATH="${MANIFEST_PATH:-${WORK_ROOT}/install.manifest}"
 RAGFLOW_VERSION="${RAGFLOW_VERSION:-v0.24.0}"
 RAGFLOW_REPO="${RAGFLOW_REPO:-https://github.com/infiniflow/ragflow.git}"
 RAGFLOW_IMAGE="${RAGFLOW_IMAGE:-infiniflow/ragflow:${RAGFLOW_VERSION}}"
+DOCKER_CE_REPO_URL="${DOCKER_CE_REPO_URL:-https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-know-ragflow}"
 RAGFLOW_DEVICE="${RAGFLOW_DEVICE:-cpu}"
 RAGFLOW_DOC_ENGINE="${RAGFLOW_DOC_ENGINE:-elasticsearch}"
@@ -173,7 +174,7 @@ install_docker_if_needed() {
       log "Installing Docker CE from the official yum repository"
       run_as_root "${PKG_MANAGER}" install -y dnf-plugins-core yum-utils device-mapper-persistent-data lvm2 curl ca-certificates || true
       run_as_root mkdir -p /etc/yum.repos.d
-      run_as_root curl -fsSL https://download.docker.com/linux/centos/docker-ce.repo -o /etc/yum.repos.d/docker-ce.repo
+      run_as_root curl -fsSL "${DOCKER_CE_REPO_URL}" -o /etc/yum.repos.d/docker-ce.repo
       run_as_root "${PKG_MANAGER}" makecache
       run_as_root "${PKG_MANAGER}" install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
       ;;
